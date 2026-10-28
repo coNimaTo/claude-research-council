@@ -3,8 +3,10 @@
 
 Registered in ~/.claude/settings.json (matcher "Bash"). Other agents and the main
 session pass through untouched. Inside the sandbox the whole filesystem is read-only,
-/tmp is a throwaway tmpfs and there is no network. Fails closed: if the sandbox
-cannot be built, the command is denied rather than run unprotected.
+/tmp is a throwaway tmpfs and there is no network. Claude's own /tmp/claude-<uid>
+scratchpads stay visible (read-only) so agents can read briefs the orchestrator
+writes there. Fails closed: if the sandbox cannot be built, the command is denied
+rather than run unprotected.
 """
 import json, os, shlex, shutil, sys
 
@@ -17,7 +19,9 @@ def decide(event):
     if not bwrap or not tool_input.get("command"):
         return deny("council sandbox unavailable (bwrap missing or empty command) — command blocked")
     cwd = event.get("cwd") or os.getcwd()
-    sandboxed = (f"{bwrap} --ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --unshare-net --unshare-pid "
+    scratch = shlex.quote(f"/tmp/claude-{os.getuid()}")
+    sandboxed = (f"{bwrap} --ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --ro-bind-try {scratch} {scratch} "
+                 f"--unshare-net --unshare-pid "
                  f"--die-with-parent --chdir {shlex.quote(cwd)} -- bash -c {shlex.quote(tool_input['command'])}")
     return {"hookSpecificOutput": {
         "hookEventName": "PreToolUse",

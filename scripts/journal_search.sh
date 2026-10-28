@@ -23,7 +23,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # Compute the query sha (same recipe as SKILL.md Step 9).
-QUERY_SHA="$(printf '%s' "$QUERY" | shasum | cut -c1-8)"
+QUERY_SHA="$(printf '%s' "$QUERY" | sha1sum | cut -c1-8)"
 
 # Pass 1: exact sha1-prefix match.
 SHA_HITS=$(jq -rc --arg s "$QUERY_SHA" \

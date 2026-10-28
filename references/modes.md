@@ -5,49 +5,49 @@ Three modes trade off thoroughness against cost and latency. The right mode depe
 ## Mode definitions
 
 ### Quick
-- **Advisors:** 3 (Red Team, Executor, First Principles)
+- **Advisors:** 4 (Red Team, Methodologist, Executor, First Principles)
 - **Peer review:** none
 - **Debate round:** no
 - **Bias audit:** skipped (saves one call; speed is the point of Quick)
 - **Codex Decision Science:** no
 - **Chairman:** single (Consensus only, no Dissent pass)
 - **Dissent Ledger:** no
-- **~Calls:** 4 (3 advisors + 1 chairman)
+- **~Calls:** 5 (4 advisors + 1 chairman)
 - **~Wall-clock:** 25-40 seconds
 
 **When Quick is appropriate:**
 - User explicitly says "quick" or "fast"
 - Time-pressured framing in the question ("I need to decide in an hour", "meeting in 30 mins")
-- Stakes are clearly bounded: reversible within 1 day, or below ~$1k in consequence
+- Stakes are clearly bounded: reversible within a day, and no scarce resource (sample, wafer, fab run, instrument/beam time) is consumed
 - The question is genuinely constrained — not much to debate
 
 **Quick verdict structure:** same 5 H2 sections but from a single chairman. No confidence header, no Dissent Ledger. Tell the user at the end: "This was a Quick council. Run `/claude-council [same question] deep` if you want full analysis."
 
 ### Standard
-- **Advisors:** 5 (all)
-- **Peer review:** 5 parallel calls
+- **Advisors:** 6 (all)
+- **Peer review:** 6 parallel calls
 - **Debate round:** conditional (triggers if consensus-strength average ≥ 4.0)
 - **Codex Decision Science:** optional ("with codex" suffix)
 - **Chairman:** dual (Consensus + Dissent in parallel) + Dissent Preservation Pass
 - **Dissent Ledger:** yes
-- **~Calls:** 13-15 (including conditional debate, excluding Codex)
+- **~Calls:** 16-18 (including conditional debate, excluding Codex)
 - **~Wall-clock:** 75-110 seconds
 
 Standard is the default for most real decisions. Use it when you don't know which mode fits — the escalation logic below will auto-escalate if needed.
 
 ### Deep
-- **Advisors:** 5 (all, with expanded Tree-of-Thoughts — all 3 reframings returned for First Principles, all 3 options returned for Expansionist)
-- **Peer review:** 5 parallel calls
+- **Advisors:** 6 (all, with expanded Tree-of-Thoughts — all 3 reframings returned for First Principles, all 3 options returned for Expansionist)
+- **Peer review:** 6 parallel calls
 - **Debate round:** always runs
 - **Codex Decision Science:** always runs (Claude fallback if Codex unavailable)
 - **Chairman:** dual + Dissent Preservation Pass
 - **Dissent Ledger:** yes
-- **~Calls:** 16 + 1 Codex
+- **~Calls:** 19 + 1 Codex
 - **~Wall-clock:** 130-180 seconds
 
 **When Deep is appropriate:**
 - User explicitly says "deep"
-- High-stakes markers: irreversible decisions, large financial/organizational consequences, team-affecting calls
+- High-stakes markers: irreversible or destructive steps, months of work or scarce fab/instrument time at stake, decisions that change the thesis scope or affect collaborators
 - Standard returned low confidence (see escalation below)
 - User opted in after being offered escalation
 
@@ -56,7 +56,7 @@ Standard is the default for most real decisions. Use it when you don't know whic
 The orchestrator picks mode in this order:
 
 1. **Explicit suffix wins:** "quick" → Quick, "deep" → Deep, "with codex" → Standard + Codex pass
-2. **Stake markers in the framed question:** look for: "can't undo", "irreversible", "bet the company", "my career", "we only get one shot", "six figures", "everyone is watching" → auto-select Deep
+2. **Stake markers in the framed question:** look for: "can't undo", "irreversible", "destructive", "only sample", "last wafer", "one fab run", "beam time", "months of work", "thesis scope", "before the defense", "submission deadline" → auto-select Deep
 3. **Default:** Standard
 
 ## Escalation after Standard
@@ -77,7 +77,7 @@ Quick: if the single chairman's verdict has `confidence: high` and no Dissent Le
 
 Standard: if peer-review consensus-strength average is ≤ 2.0, skip the debate round — there's no consensus to attack. Note in transcript: "Debate round skipped — insufficient consensus for forced debate (avg score: X/5)."
 
-Standard: if all 5 advisor confidence blocks are `high`, the Dissent Preservation Pass may return "Clean" — that's fine. Don't force debate to manufacture drama.
+Standard: if all 6 advisor confidence blocks are `high`, the Dissent Preservation Pass may return "Clean" — that's fine. Don't force debate to manufacture drama.
 
 ## Mode in the transcript
 

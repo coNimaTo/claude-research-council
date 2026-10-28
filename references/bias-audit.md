@@ -1,6 +1,6 @@
 # Bias Audit — Prompt & Protocol
 
-Run as a single `Agent(subagent_type="general-purpose")` call before the advisor fan-out. Pass the framed question. Outputs structured bias flags appended to the framed question as context for all advisors.
+Run as a single `Agent(subagent_type="council-advisor")` call before the advisor fan-out. Pass the framed question. Outputs structured bias flags appended to the framed question as context for all advisors.
 
 ## Agent prompt
 
@@ -21,6 +21,9 @@ BIAS CHECKLIST:
 6. Status quo bias — treating the current state as the default good
 7. Planning fallacy — underestimating time, cost, or complexity
 8. Narrative fallacy — constructing a causal story around a coincidence or correlation
+9. Garden of forking paths — trying analysis choices (cuts, fits, filters, thresholds) until a result appears
+10. Artifact-as-signal — treating a possible instrument, calibration or processing artifact as a real physical effect
+11. Novelty pull — favouring the option most likely to give an exciting result over the one most likely to give a reliable one
 
 Output format (only include detected biases):
 BIAS: [name]
@@ -34,7 +37,7 @@ Under 150 words total. If no biases detected, output: BIAS AUDIT: Clean — no s
 
 ## How the orchestrator uses this output
 
-Append the bias audit output verbatim to the framed question block under a `BIAS FLAGS:` heading. All five advisor prompts receive this augmented framed question. Advisors are not instructed to respond to each bias explicitly — they see it as background context.
+Append the bias audit output verbatim to the framed question block under a `BIAS FLAGS:` heading. All six advisor prompts receive this augmented framed question. Advisors are not instructed to respond to each bias explicitly — they see it as background context.
 
 In the HTML report, render bias flags in a callout box at the top of the question section with a yellow accent. Label it "Pre-council bias scan" with a note that these are signals, not verdicts.
 

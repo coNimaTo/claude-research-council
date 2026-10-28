@@ -19,7 +19,7 @@ PREFIX="$1"; shift
 NOTE="$*"
 
 if ! command -v jq >/dev/null 2>&1; then
-  echo "Error: jq is required. Install with: brew install jq" >&2
+  echo "Error: jq is required. Install with: sudo pacman -S jq" >&2
   exit 2
 fi
 if [ ! -f "$JOURNAL_FILE" ]; then

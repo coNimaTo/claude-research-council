@@ -1,23 +1,27 @@
 ---
 name: claude-council
 description: |
-  Convene a structured LLM Council — five thinking-lens advisors (Red Team, First Principles, Expansionist, Outsider, Executor) plus anonymised peer review, forced debate on consensus, dual-chairman synthesis with dissent preservation, and optional Codex-powered Decision Science pass — to pressure-test high-stakes decisions. Adaptive modes (Quick/Standard/Deep) keep cost bounded; a persistent journal enables learning across runs. Mandatory triggers: /claude-council, "convene the council", "run this by the council", "I need the council", "council this", "pressure-test this", "stress-test this", "war room this", "debate this". Strong triggers: "I'm torn between X and Y", "this is a big decision", "help me think this through from multiple angles", "I need outside perspectives", "should I X or Y" (with real stakes — if binary with obvious answer, triage rejects per Step 1 rule 4). Do NOT invoke for factual questions, coding help, debugging, quick yes/no decisions, emotional support, or questions with one right answer — answer those directly. Optional suffixes: "with codex" enables Decision Science pass; "deep" forces Deep mode; "quick" forces Quick mode. Secondary invocation: /claude-council outcome <sha1> <note> records decision outcome. /claude-council meta runs journal meta-analysis.
+  Read-only LLM Council for research work. Four workflows: (1) decisions — six advisors (Red Team, Methodologist, First Principles, Expansionist, Outsider, Executor) read the user's data/scripts, peer review, forced debate, dual chairman with dissent ledger; modes quick/standard/deep, "with codex"; (2) /claude-council audit <path> — research-code audit (physics, numerics, data path, statistics, reproducibility), every finding verified; (3) /claude-council review <file> — review of a Spanish thesis chapter, paper, poster or talk (referee, numbers vs sources, physics, outsider, language), likely jury questions; (4) outcome <sha> <note> / meta. Triggers: /claude-council, "council this", "pressure-test this", "I'm torn between X and Y", "audit this analysis code", "review this chapter", "revisá este texto". Not for factual questions, quick yes/no, ordinary coding or debugging help.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion
 ---
 
 # LLM Council
 
-> **Install path assumption:** This skill assumes installation at `~/.claude/skills/claude-council/`. If installed elsewhere (e.g., `~/.claude/plugins/<name>/skills/claude-council/`), adjust script paths in Steps 0, 2, and 10 accordingly.
+> **Install path assumption:** This skill assumes installation at `~/.claude/skills/claude-council/`. If installed elsewhere (e.g., `~/.claude/plugins/<name>/skills/claude-council/`), adjust script paths in Steps 0, 2, 8b and 10 accordingly.
 
-Run any high-stakes decision through five structured thinking lenses, a peer-review round, a forced debate when consensus is too clean, and a dual-chairman synthesis that preserves dissent. Every run logs to a journal; outcomes feed a self-improvement loop that proposes persona refinements over time.
+Run any high-stakes decision through six structured thinking lenses (advisors inspect the actual data, scripts and notes involved), a peer-review round, a forced debate when consensus is too clean, and a dual-chairman synthesis that preserves dissent. Every run logs to a journal; outcomes feed a self-improvement loop that proposes persona refinements over time.
 
 **Not for:** factual lookups, debugging, single-domain technical questions, quick yes/no decisions, emotional support. If none of the options feel genuinely hard, just answer directly.
+
+**Read-only council.** Every `Agent()` call in this skill (bias audit, advisors, reviewers, debaters, chairmen, dissent pass, Decision Science fallback) uses `subagent_type="council-advisor"` — an agent type with no Edit/Write/NotebookEdit tools (`~/.claude/agents/council-advisor.md`). If that type is unavailable, fall back to `general-purpose`, and write `HARD BLOCK: off (council-advisor agent not installed)` at the top of the transcript. Their shell commands run in a read-only, offline `bwrap` sandbox when `scripts/sandbox_hook.py` is registered as a PreToolUse hook in `~/.claude/settings.json`: check with `grep -q sandbox_hook ~/.claude/settings.json` and write `SANDBOX: on` or `SANDBOX: off (hook not registered)` under the HARD BLOCK line. Step 8b audits every run.
 
 ---
 
 ## Step 0 — Handle special invocations first
 
 - `/claude-council outcome <sha1> <note>` — look up the run in `~/.claude/skills/claude-council/journal/council-log.jsonl` by sha1 prefix, update its `outcome` field, and confirm. Done.
+- `/claude-council audit <path> [...] [-- focus] [quick]` — research-code audit (physics, numerics, data path, statistics, reproducibility). Follow `references/audit.md` instead of Steps 1–10. Done.
+- `/claude-council review <file> [...] [-- focus] [quick]` — review of a Spanish scientific text (thesis chapter, paper, poster, talk): referee, methodologist, numbers checker, physics, outsider, language. Follow `references/review.md` instead of Steps 1–10. Done.
 - `/claude-council meta` — run `bash ~/.claude/skills/claude-council/scripts/meta_analysis.sh` and surface the resulting amendment file path. Done.
 - Any other invocation → continue to Step 1.
 
@@ -27,7 +31,7 @@ Run any high-stakes decision through five structured thinking lenses, a peer-rev
 
 Reject and answer directly if ANY applies:
 1. Factual / one right answer ("capital of France?")
-2. Single-domain technical — a competent practitioner tweets it
+2. Single-domain technical with a settled textbook/datasheet answer — answer directly (a genuine trade-off between methods, designs, recipes or analysis approaches IS councilable)
 3. No stakes named — ask once via AskUserQuestion "what makes this high-stakes?"; if user shrugs, drop
 4. Binary with obvious answer ("ship untested code to prod Friday?")
 5. Already decided and seeking validation — ask: challenge or confirm? If confirm, skip
@@ -40,8 +44,12 @@ Reject and answer directly if ANY applies:
 Escape the raw question for safe shell passing: replace all single quotes with `'\''`, then wrap in single quotes. Store as `$ESCAPED_QUESTION`. Never pass raw user text directly to bash — `$(...)`, backticks, and `\` sequences in the question would execute.
 
 ```bash
+SHA=$(printf '%s' "$ESCAPED_QUESTION" | sha1sum | cut -c1-8)
 bash ~/.claude/skills/claude-council/scripts/journal_search.sh "$ESCAPED_QUESTION"
+python3 -I ~/.claude/skills/claude-council/scripts/integrity_check.py start "$SHA"
 ```
+
+`$SHA` is computed here (not in Step 9) because Step 7a needs it, and it hashes the raw question with the same recipe as `journal_search.sh`, so a repeated question finds its earlier run.
 
 If ≥1 prior run matches on sha1-prefix or keyword overlap: surface a one-line summary ("Related council on DATE — recommended X — outcome: Y") and inject up to 2 prior verdicts as **"Prior council context"** in the framed question.
 
@@ -49,7 +57,9 @@ If ≥1 prior run matches on sha1-prefix or keyword overlap: surface a one-line 
 
 ## Step 3 — Frame the question + Bias Audit
 
-**3a. Workspace scan** — Glob for `CLAUDE.md`, `memory/`, any user-referenced files. Cap at 3 files chosen by recency + CLAUDE.md precedence. Cap framed question at ~4k tokens; note truncation in transcript. If no `CLAUDE.md` or `memory/` files are found, include in the transcript: "Workspace scan: no project context found. Council proceeds with user-provided context only."
+**3a. Workspace scan** — Glob for `CLAUDE.md`, `memory/`, any user-referenced files. Cap at 3 files chosen by recency + CLAUDE.md precedence. Cap framed question at ~4k tokens; note truncation in transcript.
+
+Separately, list the **absolute paths** of the data files, analysis scripts, notebooks, simulation outputs and notes the decision depends on (user-named ones plus obvious ones found by a quick Glob). These go in the `FILES:` field — advisors open them themselves, so this list is not capped by the ~4k token budget; don't paste their contents into the framed question. If no `CLAUDE.md` or `memory/` files are found, include in the transcript: "Workspace scan: no project context found. Council proceeds with user-provided context only."
 
 If question is vague, use AskUserQuestion **once** to clarify. Then produce `{{FRAMED_QUESTION}}`:
 ```
@@ -57,10 +67,11 @@ DECISION: <core question>
 CONTEXT: <workspace + user context>
 STAKES: <what's at stake>
 OPTIONS: <options named by user, if any>
+FILES: <absolute paths advisors should inspect, one per line; "none" if the question is general>
 PRIOR: <prior council context if any>
 ```
 
-Store the full framed question text as the shell variable `FRAMED_QUESTION` for use in Step 9 SHA computation. Escape single quotes in the text (`'` → `'\''`).
+Store the full framed question text as the shell variable `FRAMED_QUESTION` for use in later steps. Escape single quotes in the text (`'` → `'\''`).
 
 **3b. Bias Audit** — **skip in Quick mode** (latency cost is not justified; see `references/modes.md`). In Standard/Deep: single Agent() call using the prompt in `references/bias-audit.md`. Pass `{{FRAMED_QUESTION}}`. Receives back a structured bias-flags list. Append to framed question as:
 ```
@@ -77,18 +88,18 @@ Read `references/modes.md` for full escalation logic. Summary:
 
 | Mode | When | ~Calls |
 |---|---|---|
-| Quick | "quick" suffix / stakes < $1k / ≤ 1-day reversible | 4 |
-| Standard | default | 13–15 |
-| Deep | "deep" / high stakes / auto-escalate from low confidence | 16 + 1 Codex |
+| Quick | "quick" suffix / no scarce resource at risk / ≤ 1-day reversible | 5 |
+| Standard | default | 16–18 |
+| Deep | "deep" / high stakes / auto-escalate from low confidence | 19 + 1 Codex |
 
 ---
 
 ## Step 5 — Fan-out (parallel Agent calls)
 
-Read `references/personas.md` for all five persona prompts. Dispatch in a **single turn**:
+Read `references/personas.md` for all six persona prompts. Append the **Ground Rules** block from that file to every persona prompt **except the Outsider's** (the Outsider's value is having no context — it must not open files). Dispatch in a **single turn**:
 
-- **Standard/Deep:** 5 parallel `Agent(subagent_type="general-purpose", description="<persona>", prompt=<persona_prompt with FRAMED_QUESTION substituted>)` calls
-- **Quick:** 3 advisors (Red Team, Executor, First Principles)
+- **Standard/Deep:** 6 parallel `Agent(subagent_type="council-advisor", description="<persona>", prompt=<persona_prompt with FRAMED_QUESTION substituted + Ground Rules>)` calls
+- **Quick:** 4 advisors (Red Team, Methodologist, Executor, First Principles)
 
 **Deep mode enhancement:** For Deep mode, append to First Principles and Expansionist prompts: "Return ALL three reframings/options with full reasoning for each, not just the strongest + runner-up."
 
@@ -111,27 +122,17 @@ Read `references/decision-science.md`. Extract the options from `{{FRAMED_QUESTI
 
 **Codex invocation:**
 
-Detect available timeout command; fall back gracefully on stock macOS:
-
 ```bash
-if command -v timeout >/dev/null 2>&1; then
-  TIMEOUT_CMD="timeout 120"
-elif command -v gtimeout >/dev/null 2>&1; then
-  TIMEOUT_CMD="gtimeout 120"
-else
-  TIMEOUT_CMD=""
-fi
-
 if command -v codex >/dev/null 2>&1; then
   CODEX_OUTPUT=$(printf '%s' "$DECISION_SCIENCE_PROMPT" \
-    | $TIMEOUT_CMD codex exec --sandbox read-only --skip-git-repo-check -) \
+    | timeout 120 codex exec --sandbox read-only --skip-git-repo-check -) \
     || CODEX_OUTPUT=""
 fi
 ```
 
 **Safety note:** The prompt is piped via stdin using `printf '%s'`, not a heredoc — this avoids shell expansion of any `$`, backticks, or metacharacters in the prompt text. The orchestrator must pre-build `$DECISION_SCIENCE_PROMPT` as a shell variable containing the full decision-science prompt (from `references/decision-science.md`) with `{{FRAMED_QUESTION}}` and `{{OPTIONS_LIST}}` already substituted in as literal text.
 
-**Fallback** (Codex absent, timed out, or errored): `Agent(subagent_type="general-purpose", prompt=<decision-science prompt>)`. Set `CODEX_USED=false`. If Codex ran successfully, set `CODEX_USED=true`. These must be the literal JSON booleans `true` or `false` (no quotes) — `--argjson` in Step 10 requires valid JSON.
+**Fallback** (Codex absent, timed out, or errored): `Agent(subagent_type="council-advisor", prompt=<decision-science prompt>)`. Set `CODEX_USED=false`. If Codex ran successfully, set `CODEX_USED=true`. These must be the literal JSON booleans `true` or `false` (no quotes) — `--argjson` in Step 10 requires valid JSON.
 
 **Parsing Decision Science output:** The output contains JSON blocks followed by plain-text RANKING/DOMINATED/KEY ASSUMPTION sections. Parse JSON blocks by matching `{` ... `}` boundaries (the schema has no nested objects). If JSON parsing fails on any block, capture the raw text and present it in the transcript — do not crash the council. The plain-text sections follow the last JSON block.
 
@@ -140,19 +141,20 @@ fi
 ## Step 7 — Anonymize + Peer review + Forced Debate
 
 **7a. Anonymize** — Steps:
-1. Generate a random A-E permutation seeded from the first 4 hex digits of `$SHA` (deterministic per question, reduces journal diff noise). Record the mapping in the transcript.
+1. Generate a random A-F permutation (A-D in Quick) seeded from the first 4 hex digits of `$SHA` (deterministic per question, reduces journal diff noise). Record the mapping in the transcript.
 2. Strip each response's first line if it contains a self-identification.
 3. **Structural sanitisation** — regex-replace persona-signature patterns that leak identity through anonymised text:
    - `THE FAILURE MODE` / `THE ROOT CAUSE` / `THE MISSED SIGNAL` / `THE ALTERNATIVE` → `POINT 1` / `POINT 2` / `POINT 3` / `POINT 4`
    - `REFRAMING [ABC]` → `PERSPECTIVE [1/2/3]`; `STRONGEST:` / `RUNNER-UP:` → `PRIMARY:` / `SECONDARY:`
    - `OPTION [XYZ]` → `ALTERNATIVE [1/2/3]`; `DOMINANT:` → `RECOMMENDED:`
    - `FIELD:` / `NAIVE READ:` / `BUBBLE SPOTS:` / `CROSS-DOMAIN INSIGHT:` → `LENS:` / `INITIAL READ:` / `ASSUMPTIONS:` / `INSIGHT:`
-   - `OODA STAGE` → `PHASE ASSESSMENT`; `RICE SCORING` / `RICE Score` → `PRIORITY SCORING` / `Priority Score`; `STATUS: DRAFT` → `NOTE: INCOMPLETE DATA`
+   - `EVIDENCE CLAIM` / `THREATS` / `MISSING CONTROL` / `MINIMUM VALID DESIGN` → `CLAIM` / `ISSUES` / `GAP` / `PROPOSAL`; severity tags `BLOCKER` / `MAJOR` / `MINOR` → `HIGH` / `MEDIUM` / `LOW`
+   - `RESEARCH STAGE` → `PHASE ASSESSMENT`; `COST-OF-TEST TABLE` → `OPTION COSTING`; `CHEAPEST DECISIVE TEST` → `FIRST TEST`; `STATUS: DRAFT` → `NOTE: INCOMPLETE DATA`
 4. Preserve `=== CONFIDENCE ===` blocks unchanged (all personas share this format).
 
-**7b. Peer review (Standard/Deep)** — Read `references/peer-review.md` for the full reviewer prompt. Dispatch 5 parallel Agent() calls, each receiving all anonymized A–E responses plus the reviewer prompt.
+**7b. Peer review (Standard/Deep)** — Read `references/peer-review.md` for the full reviewer prompt. Dispatch 6 parallel Agent() calls, each receiving all anonymized A–F responses plus the reviewer prompt.
 
-**Score extraction:** Each reviewer's Q4 answer must be a single integer 1–5. Extract using regex: `CONSENSUS STRENGTH:\s*(\d)` (case-insensitive). If a reviewer outputs a non-integer or out-of-range value, default to 3 (neutral) and log a warning in the transcript. Compute the arithmetic mean of all 5 extracted scores, rounded to one decimal.
+**Score extraction:** Each reviewer's Q4 answer must be a single integer 1–5. Extract using regex: `CONSENSUS STRENGTH:\s*(\d)` (case-insensitive). If a reviewer outputs a non-integer or out-of-range value, default to 3 (neutral) and log a warning in the transcript. Compute the arithmetic mean of all 6 extracted scores, rounded to one decimal.
 
 **Consensus summary synthesis:** After collecting peer reviews, produce a 2-3 sentence `CONSENSUS_SUMMARY` capturing: (a) what the majority of advisors recommend, (b) the dominant reasoning, (c) any conditions or caveats shared across reviews. Store as the variable `$CONSENSUS_SUMMARY` — this is substituted into the Prosecutor and Defender prompts in `references/debate-round.md`.
 
@@ -166,7 +168,7 @@ Read `references/debate-round.md` for full prompts.
 
 ## Step 8 — Dual Chairman + Dissent Preservation
 
-**De-anonymize before chairman dispatch:** Using the A-E mapping from Step 7a, restore persona labels on each response. The chairman prompts in `references/chairman.md` expect persona-labelled inputs (`Red Team: ...`, `First Principles: ...`, etc.) — substitute the original (un-anonymised) response text, not the sanitised peer-review version.
+**De-anonymize before chairman dispatch:** Using the A-F mapping from Step 7a, restore persona labels on each response. The chairman prompts in `references/chairman.md` expect persona-labelled inputs (`Red Team: ...`, `Methodologist: ...`, `First Principles: ...`, etc.) — substitute the original (un-anonymised) response text, not the sanitised peer-review version.
 
 Read `references/chairman.md`. Three Agent() calls in two waves:
 
@@ -182,7 +184,7 @@ Final verdict = Chairman-Consensus output + Dissent Ledger appended.
 
 Mandate verdict header:
 ```
-Council confidence: high | medium | low  (n/5 high, n/5 medium, n/5 low)
+Council confidence: high | medium | low  (n/6 high, n/6 medium, n/6 low)
 Dominant assumption: <single shared premise>
 Breakers: <top 2 signals that flip the recommendation>
 ```
@@ -201,20 +203,34 @@ If triggered: `AskUserQuestion` — *"Council confidence is low (reason: {which 
 
 ---
 
+## Step 8b — Integrity check (every mode)
+
+Before writing any output, check that no council agent changed anything. Pass the parent directory of every `FILES:` path plus `$PWD` (the script ignores `$HOME` and `/` as too broad, plus `__pycache__` and `~/.claude`):
+
+```bash
+python3 -I ~/.claude/skills/claude-council/scripts/integrity_check.py end "$SHA" <dir> [<dir> ...]
+```
+
+The first output line is `INTEGRITY: clean` or `INTEGRITY: WARNING — …`, followed by `CHANGED:` lines (files modified since Step 2) and `SUSPECT:` lines (subagent Edit/Write calls, or Bash commands that look like writes, with the agent's name). `SUSPECT` is a pattern match — a comparison like `awk '$1 > 3'` can trip it — so `CHANGED` is the authoritative signal. Changes the user made themselves during the run also appear; say so rather than assume an agent did it.
+
+- **Clean:** note it in the transcript; render `{{INTEGRITY_HTML}}` as `<div class="integrity integrity-clean">Integrity check: clean — no files changed, no write attempts (N subagents audited)</div>`.
+- **Warning:** do NOT revert or touch the listed files. Tell the user in chat *before* the verdict, quoting every `CHANGED`/`SUSPECT` line, and render `{{INTEGRITY_HTML}}` as `<div class="integrity integrity-warning"><strong>Integrity warning</strong><ul><li>…one per line, HTML-escaped…</li></ul></div>`. Paste the full script output into the transcript.
+
+---
+
 ## Step 9 — Generate outputs
 
 **Timestamp + sha1:**
 ```bash
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 FILE_TS=$(date -u +%Y%m%d-%H%M%SZ)
-SHA=$(printf '%s' "$FRAMED_QUESTION" | shasum | cut -c1-8)
 ```
 
-The orchestrator must have `FRAMED_QUESTION` set as a shell variable from Step 3 output. `printf '%s'` avoids a trailing newline affecting the hash. `-u` forces UTC. `FILE_TS` is the filename-safe variant; `TS` is ISO 8601 for the journal.
+`$SHA` comes from Step 2. `-u` forces UTC. `FILE_TS` is the filename-safe variant; `TS` is ISO 8601 for the journal.
 
 **Filenames:** `council-report-${FILE_TS}-q${SHA}.html`, `council-transcript-${FILE_TS}-q${SHA}.md`
 
-**Output directory:** `$PWD` — test write access first. Fallback: `~/Documents/claude-council-reports/`
+**Output directory:** always `~/Documents/Tesis/council/` (run `mkdir -p ~/Documents/Tesis/council` first), regardless of the current working directory.
 
 **HTML token → source mapping:**
 
@@ -231,14 +247,15 @@ The orchestrator must have `FRAMED_QUESTION` set as a shell variable from Step 3
 | `{{VERDICT_HTML}}` | Chairman-Consensus verdict (markdown → HTML: `## H2` → `<h2>`, `- bullet` → `<ul><li>`, paragraphs → `<p>`) | |
 | `{{DISSENT_LEDGER_HTML}}` | Dissent bullets in `<div class="dissent-ledger"><strong>Dissent Ledger</strong><ul><li>...</li></ul></div>`; empty if Clean or Quick | |
 | `{{AGREEMENT_GRID_HTML}}` | "Where the council agrees" as `<div class="card">` with `<table class="grid-table">` showing advisor agreement; empty if Quick | |
-| `{{RICE_TABLE_HTML}}` | Executor RICE as `<div class="card"><div class="card-title">RICE Analysis</div><div class="card-body"><table class="rice-table">...</table></div></div>`; empty if no RICE data | |
+| `{{COST_TABLE_HTML}}` | Executor cost-of-test table as `<div class="card"><div class="card-title">Cost of Test</div><div class="card-body"><table class="cost-table">...</table></div></div>`, followed by the cheapest decisive test as a `<p>`; empty if no table | |
 | `{{DECISION_SCIENCE_MATRIX_HTML}}` | Decision Science JSON as `<div class="card"><div class="card-title">Decision Science</div><div class="card-body"><table class="ds-table">...</table></div></div>`; empty if not ran | Rows: `dominant` class for dominant, `dominated` for dominated |
 | `{{DEBATE_HTML}}` | Debate as `<div class="card"><div class="card-title">Debate Round</div><div class="card-body"><div class="debate-callout">...</div></div></div>` with prosecutor/defender sides; empty if skipped | |
-| `{{ADVISORS_HTML}}` | Each advisor as `<details class="advisor-{kebab}"><summary>{Name} <span class="conf-{level}">{level}</span></summary><div class="detail-body">{text}</div></details>` | kebab: `red-team`, `first-principles`, `expansionist`, `outsider`, `executor` |
+| `{{ADVISORS_HTML}}` | Each advisor as `<details class="advisor-{kebab}"><summary>{Name} <span class="conf-{level}">{level}</span></summary><div class="detail-body">{text}</div></details>` | kebab: `red-team`, `methodologist`, `first-principles`, `expansionist`, `outsider`, `executor` |
 | `{{REVIEWS_HTML}}` | Each review as `<details><summary>Reviewer {N}</summary><div class="detail-body">{text}</div></details>`; empty if Quick | |
+| `{{INTEGRITY_HTML}}` | From Step 8b | **HTML-escape** each listed path/command |
 | `{{FOOTER_HTML}}` | `LLM Council &middot; Mode: {mode} &middot; SHA: {sha} &middot; <a href="{transcript_path}">Full transcript</a>` | |
 
-**HTML:** Read `assets/report-template.html`, substitute all tokens per the table above, Write. Open with `open <path>` on darwin.
+**HTML:** Read `assets/report-template.html`, substitute all tokens per the table above, Write. Open with `xdg-open <path> >/dev/null 2>&1 &`.
 
 **Transcript:** Write a markdown file with: invocation timestamp, framed question, anonymization map, all advisor responses with persona names, all peer reviews, debate transcript (if ran), both chairman outputs, dissent ledger, full verdict, Decision Science matrix (if ran).
 
@@ -261,6 +278,7 @@ Construct the journal payload from values collected during this run. All fields 
   "biases_flagged": [<list of bias names from Step 3b, or empty array if Quick/clean>],
   "advisors_confidence": {
     "red_team": "<high|medium|low from Red Team's CONFIDENCE block>",
+    "methodologist": "<from Methodologist>",
     "first_principles": "<from First Principles>",
     "expansionist": "<from Expansionist>",
     "outsider": "<from Outsider>",
@@ -299,11 +317,11 @@ bash ~/.claude/skills/claude-council/scripts/journal_append.sh "$PAYLOAD"
 ```
 
 Where the shell variables are set from the run's outputs:
-- `$TS`, `$SHA` — from Step 9
+- `$TS` — from Step 9; `$SHA` — from Step 2
 - `$MODE` — `"Quick"`, `"Standard"`, or `"Deep"`
 - `$CODEX_USED` — `true` or `false` (JSON boolean, no quotes)
 - `$BIASES_JSON` — JSON array, e.g. `'["anchoring","sunk cost"]'` or `'[]'`
-- `$ADVISORS_CONF_JSON` — JSON object, e.g. `'{"red_team":"high","first_principles":"medium","expansionist":"high","outsider":"low","executor":"medium"}'`
+- `$ADVISORS_CONF_JSON` — JSON object, e.g. `'{"red_team":"high","methodologist":"medium","first_principles":"medium","expansionist":"high","outsider":"low","executor":"medium"}'`
 - `$CHAIRMAN_CONF` — `"high"`, `"medium"`, or `"low"`
 - `$RECOMMENDATION` — first sentence of the Recommendation section
 - `$DISSENT_JSON` — JSON array of dissent bullets, or `'[]'`

@@ -19,7 +19,7 @@ JSON_PAYLOAD="$1"
 
 # jq is required — silent skip lets malformed payloads corrupt the journal.
 if ! command -v jq >/dev/null 2>&1; then
-  echo "Error: jq is required. Install with: brew install jq" >&2
+  echo "Error: jq is required. Install with: sudo pacman -S jq" >&2
   exit 2
 fi
 

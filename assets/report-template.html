@@ -39,6 +39,7 @@
     .badge.codex { background: #e8f4ea; color: #2a7a3a; }
     .badge.mode-quick { background: #fff3e0; color: #b36a00; }
     .badge.mode-deep { background: #f3e5f5; color: #6a1b9a; }
+    .badge.mode-audit { background: #e0f2f1; color: #00695c; }
 
     /* Confidence header */
     .confidence-block {
@@ -110,6 +111,12 @@
     .verdict li { margin-bottom: 0.4rem; }
     .verdict strong { font-weight: 600; }
 
+    /* Integrity check */
+    .integrity { margin-top: 1.25rem; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .integrity-clean { background: #f0faf0; border: 1px solid #c8e6c9; color: #2e7d32; }
+    .integrity-warning { background: #fff5f5; border: 1px solid #ffcdd2; color: #c62828; }
+    .integrity-warning li { font-family: ui-monospace, monospace; word-break: break-all; }
+
     /* Dissent ledger */
     .dissent-ledger {
       margin-top: 1.25rem;
@@ -141,12 +148,23 @@
     .grid-table td:first-child { text-align: left; font-size: 0.8rem; color: #333; }
     .dot { color: #2d5a88; font-size: 1.1rem; }
 
-    /* RICE table */
-    .rice-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    .rice-table th { padding: 0.4rem 0.75rem; background: #f0f4fa; color: #2d5a88; font-weight: 600; border: 1px solid #dde4f0; text-align: left; }
-    .rice-table td { padding: 0.4rem 0.75rem; border: 1px solid #e8e8e0; vertical-align: top; }
-    .rice-score { font-weight: 700; color: #2d5a88; }
+    /* Cost-of-test table */
+    .cost-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .cost-table th { padding: 0.4rem 0.75rem; background: #f0f4fa; color: #2d5a88; font-weight: 600; border: 1px solid #dde4f0; text-align: left; }
+    .cost-table td { padding: 0.4rem 0.75rem; border: 1px solid #e8e8e0; vertical-align: top; }
+    .cost-verdict { font-weight: 700; color: #2d5a88; }
     .status-draft { color: #f57c00; font-weight: 600; font-size: 0.75rem; }
+
+    /* Audit findings */
+    .findings-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 0.75rem; }
+    .findings-table th { padding: 0.4rem 0.6rem; background: #f0f4fa; color: #2d5a88; font-weight: 600; border: 1px solid #dde4f0; text-align: left; }
+    .findings-table td { padding: 0.4rem 0.6rem; border: 1px solid #e8e8e0; vertical-align: top; word-break: break-word; }
+    .sev-blocker { color: #c62828; font-weight: 700; }
+    .sev-major { color: #e65100; font-weight: 600; }
+    .sev-minor { color: #666; }
+    .ver-confirmed { color: #2e7d32; font-weight: 600; }
+    .ver-plausible { color: #b36a00; }
+    .ver-unverified { color: #999; font-style: italic; }
 
     /* Decision science matrix */
     .ds-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
@@ -183,6 +201,8 @@
     /* Advisor color coding */
     .advisor-red-team summary { border-left: 3px solid #e53935; background: #fff5f5; }
     .advisor-red-team .detail-body { border-left-color: #e53935; }
+    .advisor-methodologist summary { border-left: 3px solid #00897b; background: #f0faf8; }
+    .advisor-methodologist .detail-body { border-left-color: #00897b; }
     .advisor-first-principles summary { border-left: 3px solid #1e88e5; background: #f0f4fb; }
     .advisor-first-principles .detail-body { border-left-color: #1e88e5; }
     .advisor-expansionist summary { border-left: 3px solid #43a047; background: #f0faf0; }
@@ -191,6 +211,14 @@
     .advisor-outsider .detail-body { border-left-color: #fb8c00; }
     .advisor-executor summary { border-left: 3px solid #8e24aa; background: #f8f0fb; }
     .advisor-executor .detail-body { border-left-color: #8e24aa; }
+    .advisor-model-checker summary { border-left: 3px solid #1e88e5; background: #f0f4fb; }
+    .advisor-model-checker .detail-body { border-left-color: #1e88e5; }
+    .advisor-numerics summary { border-left: 3px solid #8e24aa; background: #f8f0fb; }
+    .advisor-numerics .detail-body { border-left-color: #8e24aa; }
+    .advisor-data-path summary { border-left: 3px solid #fb8c00; background: #fff8f0; }
+    .advisor-data-path .detail-body { border-left-color: #fb8c00; }
+    .advisor-reproducibility summary { border-left: 3px solid #43a047; background: #f0faf0; }
+    .advisor-reproducibility .detail-body { border-left-color: #43a047; }
 
     /* Confidence inline badges */
     .conf-high { color: #2e7d32; font-weight: 600; }
@@ -258,8 +286,8 @@
   <!-- Agreement grid -->
   {{AGREEMENT_GRID_HTML}}
 
-  <!-- RICE table -->
-  {{RICE_TABLE_HTML}}
+  <!-- Cost-of-test table -->
+  {{COST_TABLE_HTML}}
 
   <!-- Decision science matrix -->
   {{DECISION_SCIENCE_MATRIX_HTML}}
@@ -282,6 +310,8 @@
       {{REVIEWS_HTML}}
     </div>
   </div>
+
+  {{INTEGRITY_HTML}}
 
   <footer>{{FOOTER_HTML}}</footer>
 

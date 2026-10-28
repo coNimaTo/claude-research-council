@@ -4,7 +4,7 @@ The Forced Debate Round triggers when peer-review consensus-strength average ≥
 
 ## Trigger logic
 
-After Step 7b (peer review), compute the average consensus-strength score across all 5 reviewers (each scores 1–5). If average ≥ 4.0 → trigger. In Deep mode, always trigger regardless of score.
+After Step 7b (peer review), compute the average consensus-strength score across all 6 reviewers (each scores 1–5). If average ≥ 4.0 → trigger. In Deep mode, always trigger regardless of score.
 
 If consensus-strength ≤ 2.0 → skip debate (no consensus to attack — the council already disagrees). If skipped, note in transcript: "Debate round skipped — insufficient consensus (score: X/5)."
 

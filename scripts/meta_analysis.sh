@@ -17,11 +17,15 @@ if [ ! -f "$JOURNAL_FILE" ]; then
 fi
 
 if ! command -v jq &>/dev/null; then
-  echo "jq is required for meta-analysis. Install via: brew install jq" >&2
+  echo "jq is required for meta-analysis. Install via: sudo pacman -S jq" >&2
   exit 1
 fi
 
 mkdir -p "$DIFFS_DIR"
+
+# Audit and review runs share the journal but have no persona confidences; analyse decision runs only.
+DECISIONS=$(mktemp); trap 'rm -f "$DECISIONS"' EXIT
+jq -c 'select((.kind // "decision") == "decision")' "$JOURNAL_FILE" > "$DECISIONS"; JOURNAL_FILE="$DECISIONS"
 
 TOTAL=$(wc -l < "$JOURNAL_FILE" | tr -d ' ')
 if [ "$TOTAL" -lt 5 ]; then
@@ -37,11 +41,12 @@ echo "Analyzing $TOTAL council runs..."
 OUTCOMES_RECORDED=$(jq -r 'select((.outcome // null) != null) | "x"' "$JOURNAL_FILE" | wc -l | tr -d ' ')
 OUTCOMES_NULL=$(jq -r 'select((.outcome // null) == null) | "x"' "$JOURNAL_FILE" | wc -l | tr -d ' ')
 
-# Confidence distribution per persona — aggregate all 5, not just 2.
+# Confidence distribution per persona — aggregate all 6.
 count_conf() {  # $1=persona key, $2=level
   jq -r ".advisors_confidence.$1 // empty" "$JOURNAL_FILE" | grep -c "^$2$" || true
 }
 RED_TEAM_HIGH=$(count_conf red_team high);          RED_TEAM_LOW=$(count_conf red_team low)
+METHOD_HIGH=$(count_conf methodologist high);        METHOD_LOW=$(count_conf methodologist low)
 FIRST_PRIN_HIGH=$(count_conf first_principles high); FIRST_PRIN_LOW=$(count_conf first_principles low)
 EXPAND_HIGH=$(count_conf expansionist high);         EXPAND_LOW=$(count_conf expansionist low)
 OUTSIDER_HIGH=$(count_conf outsider high);           OUTSIDER_LOW=$(count_conf outsider low)
@@ -89,6 +94,7 @@ $TOP_BIASES
 | Persona | High | Low |
 |---|---|---|
 | Red Team | $RED_TEAM_HIGH | $RED_TEAM_LOW |
+| Methodologist | $METHOD_HIGH | $METHOD_LOW |
 | First Principles | $FIRST_PRIN_HIGH | $FIRST_PRIN_LOW |
 | Expansionist | $EXPAND_HIGH | $EXPAND_LOW |
 | Outsider | $OUTSIDER_HIGH | $OUTSIDER_LOW |

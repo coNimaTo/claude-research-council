@@ -20,7 +20,7 @@ timeout 120 codex exec --sandbox read-only --skip-git-repo-check - <<'CODEX_EOF'
 CODEX_EOF
 ```
 
-On timeout or non-zero exit: run the same prompt as `Agent(subagent_type="general-purpose", prompt=<prompt>)`. Note in the transcript which path ran.
+On timeout or non-zero exit: run the same prompt as `Agent(subagent_type="council-advisor", prompt=<prompt>)`. Note in the transcript which path ran.
 
 ## Prompt
 
@@ -44,13 +44,14 @@ For each option, produce a JSON block in this exact schema:
   "downside_risk": "<magnitude description + rough probability>",
   "reversibility": "one_way | reversible_with_cost | easily_reversible",
   "opportunity_cost": "<what the user cannot do or gives up by choosing this>",
+  "information_value": "<what the user learns even if this option fails>",
   "data_confidence": "high | medium | low",
   "dominance": "dominated | competitive | dominant"
 }
 
 After all option blocks, add:
 
-RANKING: [list options from best to worst RICE equivalent — most upside/reversibility per unit of downside risk]
+RANKING: [list options from best to worst — most expected progress and information per unit of downside risk and scarce resource (time, samples, fab/instrument time)]
 DOMINATED OPTIONS: [options that are strictly worse than another on all dimensions — candidates to eliminate]
 KEY ASSUMPTION: [the single assumption that, if wrong, would most change this ranking]
 
@@ -63,7 +64,7 @@ Produce valid JSON blocks only — no prose wrapping the blocks. The ranking and
 
 Parse the JSON blocks. If parsing fails, capture the raw text — don't crash the council.
 
-Render in the HTML report as a Decision Science matrix table: rows = options, columns = EV best/likely/worst, reversibility, opportunity cost, dominance. Color-code: green = dominant, gray = dominated, white = competitive. Use a collapsible section if Codex was not used (less prominent).
+Render in the HTML report as a Decision Science matrix table: rows = options, columns = EV best/likely/worst, reversibility, opportunity cost, information value, dominance. Color-code: green = dominant, gray = dominated, white = competitive. Use a collapsible section if Codex was not used (less prominent).
 
 In the transcript, record the full raw output under "Decision Science Pass."
 

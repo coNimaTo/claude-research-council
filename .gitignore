@@ -1,4 +1,1 @@
 __pycache__/
-# Run data, not the skill: council log, locks, run markers, meta-analysis output.
-journal/*
-!journal/.gitkeep

@@ -7,7 +7,8 @@
 # 2 results per SKILL.md Step 2.
 set -euo pipefail
 
-JOURNAL_DIR="$(cd "$(dirname "$0")/../journal" 2>/dev/null && pwd || echo "$(dirname "$0")/../journal")"
+# Kept next to the reports so it is backed up with the thesis folder.
+JOURNAL_DIR="$HOME/Documents/Tesis/council/journal"
 JOURNAL_FILE="$JOURNAL_DIR/council-log.jsonl"
 MAX_RESULTS=2
 

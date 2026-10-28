@@ -10,8 +10,8 @@ import json, os, re, sys
 from pathlib import Path
 
 HOME = Path.home()
-MARKER_DIR = Path(__file__).resolve().parent.parent / "journal"
 COUNCIL_OUT = HOME / "Documents/Tesis/council"
+MARKER_DIR = COUNCIL_OUT / "journal"
 PROJECTS = HOME / ".claude/projects"
 # Dirs whose churn is not caused by advisors writing: caches python creates on import, Claude's own state.
 SKIP_DIRS = {"__pycache__", ".ipynb_checkpoints", ".pytest_cache", ".mypy_cache"}

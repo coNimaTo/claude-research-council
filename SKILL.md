@@ -19,7 +19,7 @@ Run any high-stakes decision through six structured thinking lenses (advisors in
 
 ## Step 0 — Handle special invocations first
 
-- `/claude-council outcome <sha1> <note>` — look up the run in `~/.claude/skills/claude-council/journal/council-log.jsonl` by sha1 prefix, update its `outcome` field, and confirm. Done.
+- `/claude-council outcome <sha1> <note>` — look up the run in `~/Documents/Tesis/council/journal/council-log.jsonl` by sha1 prefix, update its `outcome` field, and confirm. Done.
 - `/claude-council audit <path> [...] [-- focus] [quick]` — research-code audit (physics, numerics, data path, statistics, reproducibility). Follow `references/audit.md` instead of Steps 1–10. Done.
 - `/claude-council review <file> [...] [-- focus] [quick]` — review of a Spanish scientific text (thesis chapter, paper, poster, talk): referee, methodologist, numbers checker, physics, outsider, language. Follow `references/review.md` instead of Steps 1–10. Done.
 - `/claude-council meta` — run `bash ~/.claude/skills/claude-council/scripts/meta_analysis.sh` and surface the resulting amendment file path. Done.

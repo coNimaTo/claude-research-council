@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Aggregate the council journal to surface patterns for persona refinement.
 # Usage: meta_analysis.sh
-# Outputs a dated amendment proposal to journal/persona-diffs/YYYY-MM-DD-amendments.md
+# Outputs a dated amendment proposal to ~/Documents/Tesis/council/journal/persona-diffs/YYYY-MM-DD-amendments.md
 # Requires jq for JSON parsing.
 
 SCRIPT_DIR="$(dirname "$0")"
-JOURNAL_DIR="$SCRIPT_DIR/../journal"
+JOURNAL_DIR="$HOME/Documents/Tesis/council/journal"
 JOURNAL_FILE="$JOURNAL_DIR/council-log.jsonl"
 DIFFS_DIR="$JOURNAL_DIR/persona-diffs"
 TODAY=$(date +%Y-%m-%d)

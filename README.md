@@ -116,7 +116,7 @@ The transcript records `HARD BLOCK: on/off` (layer 1) and `SANDBOX: on/off` (lay
 Requirements: Claude Code, `jq`, `bwrap` (bubblewrap), Python 3. Optional: `pdftotext` for PDF reviews, `codex` for the Decision Science pass.
 
 ```bash
-git clone <this repo> ~/.claude/skills/claude-council
+git clone https://github.com/coNimaTo/claude-research-council.git ~/.claude/skills/claude-council
 cp ~/.claude/skills/claude-council/agents/council-advisor.md ~/.claude/agents/
 ```
 

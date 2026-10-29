@@ -1,0 +1,18 @@
+# Personal settings for claude-council. Copy to council.conf (git-ignored) and edit.
+# Shell syntax: KEY="value". Unset keys use the defaults in scripts/council_config.sh.
+
+# Where reports, transcripts and the journal (journal/council-log.jsonl) are written.
+COUNCIL_DIR="$HOME/Documents/claude-council"
+
+# Language of the texts you review (review mode writes suggested replacement text in it).
+# Spanish enables the Spanish-specific checklist (RAE norms, common anglicisms).
+REVIEW_LANGUAGE="English"
+
+# Language for explanations, findings and reports.
+EXPLAIN_LANGUAGE="English"
+
+# One or two sentences about your research. Added to every brief so advisors, auditors
+# and reviewers know the field, the stakes and the audience.
+# Example: "PhD in experimental condensed-matter physics: thin-film growth and transport
+# measurements at low temperature. The thesis is judged by a jury of physicists."
+RESEARCH_CONTEXT=""

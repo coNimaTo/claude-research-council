@@ -41,6 +41,7 @@ python3 -I ~/.claude/skills/claude-council/scripts/integrity_check.py start "$SH
 Read `CLAUDE.md`, a README, and the notes/memory the project has (cap 3 files) to learn what the code is for. Then write `{{AUDIT_BRIEF}}`:
 
 ```
+RESEARCH CONTEXT: <$RESEARCH_CONTEXT from the settings, or "not set">
 TARGET: <absolute paths>
 PURPOSE: <what this code computes, for which experiment/thesis section>
 HEADLINE RESULTS: <the numbers, fits, figures or tables downstream work relies on, with where they are produced (file / notebook cell)>
@@ -100,10 +101,10 @@ not_examined: <files/areas in your lens you did not get to>
 You are the Model Checker on a research-code audit council — a theorist who checks that the code implements the physics it claims to. You compare equations in the code against their textbook/paper form.
 
 What you check:
-- Equations: transcription errors, wrong factor (2π, ½, n vs n²), conjugation, sign conventions (e^{+iωt} vs e^{-iωt}, Im n > 0 vs < 0), s/p polarization handling, angle-of-incidence propagation (Snell, complex angles in absorbing layers)
+- Equations: transcription errors, wrong factor (2π, ½, n vs n²), conjugation, sign and phase conventions (e.g. e^{+iωt} vs e^{-iωt}), coordinate and angle conventions, formulas used outside the geometry they were derived for
 - Units and conversions: nm/µm/m, eV↔nm, degrees↔radians, % vs fraction, per-cell vs per-layer quantities
 - Material models: dispersion formulas and their parameters against the cited source, validity range (wavelength, composition x, temperature) and what happens outside it (extrapolation, clipping)
-- Boundary and limit cases: does the code reproduce known limits (bare substrate Fresnel reflectance, quarter-wave stack peak, lossless energy conservation R+T=1)? Run one such check when cheap.
+- Boundary and limit cases: does the code reproduce known limits (an analytic special case, a conservation law, a textbook value)? Run one such check when cheap.
 - Hidden assumptions: normal incidence formulas used at oblique angles, incoherent vs coherent treatment of thick layers, substrate backside ignored
 
 {{AUDIT_BRIEF}}
@@ -133,7 +134,7 @@ What you check:
 - Loading: header rows skipped correctly, column order and meaning (wavelength vs angle vs value vs error), units in the file vs units assumed, encoding/BOM, delimiter, which files are actually loaded (glob order, duplicates, a stale file picked up)
 - Selection: masks, windows and filters — inclusive/exclusive bounds, off-by-one, filters applied to one array but not its partner, silent dropping of rows (NaN, duplicates), sorting that breaks pairing between arrays
 - Transformation: normalisation (by what, measured where), baseline/background subtraction, averaging over repeats, resampling, angle/wavelength matching between simulation and measurement
-- Joining: simulation evaluated at the same angles, polarisation and wavelengths as the measurement it is compared to; the right sample/wafer/run matched to the right model
+- Joining: simulation evaluated at the same conditions (angles, wavelengths, temperatures, fields…) as the measurement it is compared to; the right sample/run matched to the right model
 - Notebook state: variables reused or overwritten across cells, results that depend on cell execution order, cached results (pickles, saved arrays) that may be stale relative to the code
 Trace at least one headline number end to end and write the chain (file → function → variable → result) in CHECKED AND OK or as a finding.
 
@@ -245,7 +246,7 @@ One line per REFUTED finding with the reason (so the author does not re-raise it
 ## Questions for the author
 Anything that depends on intent the code does not reveal (max 3).
 
-Do not invent findings. Do not soften CONFIRMED BLOCKERs.
+Do not invent findings. Do not soften CONFIRMED BLOCKERs. Write the report in {{EXPLAIN_LANGUAGE}}.
 
 {{AUDIT_BRIEF}}
 
@@ -260,7 +261,7 @@ Same as the decision workflow's Step 8b, passing the target paths (directories, 
 
 ## A8 — Outputs
 
-Same output directory as decision runs (`~/Documents/Tesis/council/`), filenames `audit-report-${FILE_TS}-q${SHA}.html` and `audit-transcript-${FILE_TS}-q${SHA}.md`. Reuse `assets/report-template.html` with this token mapping (anything not listed → empty string):
+Same output directory as decision runs (`$COUNCIL_DIR`), filenames `audit-report-${FILE_TS}-q${SHA}.html` and `audit-transcript-${FILE_TS}-q${SHA}.md`. Reuse `assets/report-template.html` with this token mapping (anything not listed → empty string):
 
 | Token | Source |
 |---|---|

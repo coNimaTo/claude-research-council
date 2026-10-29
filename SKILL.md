@@ -1,7 +1,7 @@
 ---
 name: claude-council
 description: |
-  Read-only LLM Council for research work. Four workflows: (1) decisions — six advisors (Red Team, Methodologist, First Principles, Expansionist, Outsider, Executor) read the user's data/scripts, peer review, forced debate, dual chairman with dissent ledger; modes quick/standard/deep, "with codex"; (2) /claude-council audit <path> — research-code audit (physics, numerics, data path, statistics, reproducibility), every finding verified; (3) /claude-council review <file> — review of a Spanish thesis chapter, paper, poster or talk (referee, numbers vs sources, physics, outsider, language), likely jury questions; (4) outcome <sha> <note> / meta. Triggers: /claude-council, "council this", "pressure-test this", "I'm torn between X and Y", "audit this analysis code", "review this chapter", "revisá este texto". Not for factual questions, quick yes/no, ordinary coding or debugging help.
+  Read-only LLM Council for research work. Four workflows: (1) decisions — six advisors (Red Team, Methodologist, First Principles, Expansionist, Outsider, Executor) read the user's data/scripts, peer review, forced debate, dual chairman with dissent ledger; modes quick/standard/deep, "with codex"; (2) /claude-council audit <path> — research-code audit (physics, numerics, data path, statistics, reproducibility), every finding verified; (3) /claude-council review <file> — review of a thesis chapter, paper, poster or talk in the configured language (referee, numbers vs sources, physics, outsider, language), likely jury questions; (4) outcome <sha> <note> / meta. Triggers: /claude-council, "council this", "pressure-test this", "I'm torn between X and Y", "audit this analysis code", "review this chapter", "revisá este texto". Not for factual questions, quick yes/no, ordinary coding or debugging help.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion
 ---
 
@@ -19,9 +19,11 @@ Run any high-stakes decision through six structured thinking lenses (advisors in
 
 ## Step 0 — Handle special invocations first
 
-- `/claude-council outcome <sha1> <note>` — look up the run in `~/Documents/Tesis/council/journal/council-log.jsonl` by sha1 prefix, update its `outcome` field, and confirm. Done.
+First load the settings: `bash ~/.claude/skills/claude-council/scripts/council_config.sh` prints `COUNCIL_DIR`, `JOURNAL_DIR`, `REVIEW_LANGUAGE`, `EXPLAIN_LANGUAGE`, `RESEARCH_CONTEXT` and `CONFIG_FILE` (from the git-ignored `council.conf`). Each Bash call is a fresh shell, so use the printed values literally wherever this skill or its references write `$COUNCIL_DIR`, `$JOURNAL_DIR`, `{{REVIEW_LANGUAGE}}` etc. Write verdicts, reports and chat summaries in `$EXPLAIN_LANGUAGE`. If `CONFIG_FILE` is `none (defaults)`, tell the user once that defaults are in use and that they can copy `council.conf.example` to `council.conf`.
+
+- `/claude-council outcome <sha1> <note>` — look up the run in `$JOURNAL_DIR/council-log.jsonl` by sha1 prefix, update its `outcome` field, and confirm. Done.
 - `/claude-council audit <path> [...] [-- focus] [quick]` — research-code audit (physics, numerics, data path, statistics, reproducibility). Follow `references/audit.md` instead of Steps 1–10. Done.
-- `/claude-council review <file> [...] [-- focus] [quick]` — review of a Spanish scientific text (thesis chapter, paper, poster, talk): referee, methodologist, numbers checker, physics, outsider, language. Follow `references/review.md` instead of Steps 1–10. Done.
+- `/claude-council review <file> [...] [-- focus] [quick]` — review of a scientific text in `$REVIEW_LANGUAGE` (thesis chapter, paper, poster, talk): referee, methodologist, numbers checker, physics, outsider, language. Follow `references/review.md` instead of Steps 1–10. Done.
 - `/claude-council meta` — run `bash ~/.claude/skills/claude-council/scripts/meta_analysis.sh` and surface the resulting amendment file path. Done.
 - Any other invocation → continue to Step 1.
 
@@ -64,7 +66,7 @@ Separately, list the **absolute paths** of the data files, analysis scripts, not
 If question is vague, use AskUserQuestion **once** to clarify. Then produce `{{FRAMED_QUESTION}}`:
 ```
 DECISION: <core question>
-CONTEXT: <workspace + user context>
+CONTEXT: <$RESEARCH_CONTEXT if set, then workspace + user context>
 STAKES: <what's at stake>
 OPTIONS: <options named by user, if any>
 FILES: <absolute paths advisors should inspect, one per line; "none" if the question is general>
@@ -230,7 +232,7 @@ FILE_TS=$(date -u +%Y%m%d-%H%M%SZ)
 
 **Filenames:** `council-report-${FILE_TS}-q${SHA}.html`, `council-transcript-${FILE_TS}-q${SHA}.md`
 
-**Output directory:** always `~/Documents/Tesis/council/` (run `mkdir -p ~/Documents/Tesis/council` first), regardless of the current working directory.
+**Output directory:** always `$COUNCIL_DIR` from the settings (run `mkdir -p` on it first), regardless of the current working directory.
 
 **HTML token → source mapping:**
 

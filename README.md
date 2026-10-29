@@ -4,11 +4,11 @@ A Claude Code skill that convenes a council of AI agents to examine research wor
 
 - **Decide**: pressure-test a hard choice, such as which fit procedure to trust, whether to spend the last wafer, or how to scope a chapter.
 - **Audit**: check research code for errors in the physics, the numerics, the data handling and the statistics.
-- **Review**: critique a scientific text (thesis chapter, paper, poster, talk) written in Spanish.
+- **Review**: critique a scientific text (thesis chapter, paper, poster, talk) in the language you configure.
 
 Each agent is given one perspective and can open the user's actual data, scripts, notebooks and notes. None of them can change anything. Every run produces an HTML report and a full transcript, and is logged in a journal so outcomes can be recorded and used to improve the advisors.
 
-This is a fork of [TorpedoD/claude-council](https://github.com/TorpedoD/claude-council) (MIT), adapted for experimental-physics thesis work on Linux.
+This is a fork of [TorpedoD/claude-council](https://github.com/TorpedoD/claude-council) (MIT), adapted for experimental-physics research. **Linux only**: the sandbox relies on bubblewrap.
 
 ## Usage
 
@@ -21,7 +21,9 @@ This is a fork of [TorpedoD/claude-council](https://github.com/TorpedoD/claude-c
 /claude-council meta                       # suggest advisor changes from 5+ recorded decision runs
 ```
 
-Phrases such as "council this", "pressure-test this", "audit this analysis code" or "revisá este texto" also trigger it.
+Phrases such as "council this", "pressure-test this", "audit this analysis code" or "review this chapter" also trigger it.
+
+**Cost.** A Standard decision council runs 16–18 agents, a full audit 8–13 and a full review 7–10. On a Pro plan that is a noticeable share of the 5-hour usage window, so use `quick` when the stakes are low.
 
 ## Workflows
 
@@ -62,7 +64,7 @@ file ─► size check (≤ 15 000 words, about one chapter)
      ─► editor: comments in document order, recurring patterns, likely jury questions
 ```
 
-Suggested replacement text is in Spanish, in the author's register. Explanations are in English.
+Suggested replacement text is in the text's language (`REVIEW_LANGUAGE`), in the author's register. Explanations are in `EXPLAIN_LANGUAGE`.
 
 ## The personalities
 
@@ -99,7 +101,7 @@ The supporting roles are a **bias auditor** (anchoring, sunk cost, garden of for
 | **Numbers checker** | Traces every number back to its source notebook or data, checks that each value is consistent throughout the text, SI formatting, and that every figure, table and equation reference exists. |
 | **Physics** | Correct equations, dimensions, definitions, stated approximations and consistent terminology. |
 | **Outsider reader** | A physicist from another field with only the text: where they got lost, undefined acronyms, and their one-sentence summary of the main result. |
-| **Language & style** | Spanish per current RAE norms, common physics anglicisms ("asumir", "eventualmente", "jugar un rol"), register and terminology consistency. |
+| **Language & style** | Grammar, calques from English, register and terminology consistency in the text's language. For Spanish, an extra checklist covers RAE norms and common physics anglicisms ("asumir", "eventualmente", "jugar un rol"). |
 
 ## Safety: the council is read-only
 
@@ -129,7 +131,22 @@ Add the sandbox hook to `~/.claude/settings.json`:
 
 Restart Claude Code.
 
-**Paths to adapt.** Reports and the journal go to `~/Documents/Tesis/council/` (the report and journal paths are set in `SKILL.md`, `references/audit.md`, `references/review.md` and the `scripts/`). Some prompts assume an experimental-physics, MBE and optics context. For another field, edit the advisor and auditor prompts in `references/`.
+## Configuration
+
+Personal settings live in `council.conf` next to `SKILL.md`. Git ignores this file, so your paths and preferences never end up in the repo. Create it from the example:
+
+```bash
+cp ~/.claude/skills/claude-council/council.conf.example ~/.claude/skills/claude-council/council.conf
+```
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `COUNCIL_DIR` | `~/Documents/claude-council` | Where reports, transcripts and the journal go |
+| `REVIEW_LANGUAGE` | `English` | Language of the texts you review; suggestions are written in it. `Spanish` adds a Spanish-specific checklist |
+| `EXPLAIN_LANGUAGE` | `English` | Language of explanations, findings and reports |
+| `RESEARCH_CONTEXT` | empty | One or two sentences about your field, stakes and audience, added to every brief |
+
+Without the file the defaults apply, and the skill says so once. `bash scripts/council_config.sh` prints the values in use. The advisor prompts are written for experimental research (samples, instrument time, fab runs); for another field, set `RESEARCH_CONTEXT` first and edit `references/` only if that is not enough.
 
 ## Files
 
@@ -141,6 +158,7 @@ Restart Claude Code.
 | `references/bias-audit.md`, `peer-review.md`, `debate-round.md`, `chairman.md`, `decision-science.md`, `modes.md` | Decision workflow stages |
 | `assets/report-template.html` | Self-contained HTML report |
 | `agents/council-advisor.md` | The read-only agent definition (copy; the live one is in `~/.claude/agents/`) |
-| `scripts/` | Sandbox hook, integrity check, audit scope check, journal append/search/outcome, meta-analysis |
+| `council.conf.example` | Template for your personal settings (`council.conf`, git-ignored) |
+| `scripts/` | Settings loader, sandbox hook, integrity check, audit scope check, journal append/search/outcome, meta-analysis |
 
-The journal (`~/Documents/Tesis/council/journal/council-log.jsonl`) holds one JSON line per run: mode, confidences, recommendation, dissent, report paths and the recorded outcome. Audit and review runs carry `kind: "audit"` or `kind: "review"`, and `meta` analyses decision runs only.
+The journal (`$COUNCIL_DIR/journal/council-log.jsonl`) holds one JSON line per run: mode, confidences, recommendation, dissent, report paths and the recorded outcome. Audit and review runs carry `kind: "audit"` or `kind: "review"`, and `meta` analyses decision runs only.

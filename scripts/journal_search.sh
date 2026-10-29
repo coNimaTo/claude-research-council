@@ -7,8 +7,7 @@
 # 2 results per SKILL.md Step 2.
 set -euo pipefail
 
-# Kept next to the reports so it is backed up with the thesis folder.
-JOURNAL_DIR="$HOME/Documents/Tesis/council/journal"
+. "$(dirname "$0")/council_config.sh"  # sets JOURNAL_DIR from council.conf
 JOURNAL_FILE="$JOURNAL_DIR/council-log.jsonl"
 MAX_RESULTS=2
 

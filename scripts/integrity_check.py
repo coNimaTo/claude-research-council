@@ -6,11 +6,14 @@
 
 Always exits 0; the first output line is "INTEGRITY: clean" or "INTEGRITY: WARNING ...".
 """
-import json, os, re, sys
+import json, os, re, subprocess, sys
 from pathlib import Path
 
 HOME = Path.home()
-COUNCIL_OUT = HOME / "Documents/Tesis/council"
+CONF = dict(line.split("=", 1) for line in subprocess.run(
+    ["bash", str(Path(__file__).resolve().parent / "council_config.sh")],
+    capture_output=True, text=True, check=True).stdout.splitlines() if "=" in line)
+COUNCIL_OUT = Path(CONF["COUNCIL_DIR"])
 MARKER_DIR = COUNCIL_OUT / "journal"
 PROJECTS = HOME / ".claude/projects"
 # Dirs whose churn is not caused by advisors writing: caches python creates on import, Claude's own state.

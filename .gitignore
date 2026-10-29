@@ -1,1 +1,3 @@
 __pycache__/
+# Personal settings (paths, languages, research context)
+council.conf

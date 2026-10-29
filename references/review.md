@@ -1,10 +1,10 @@
-# Review mode — scientific text review (Spanish)
+# Review mode — scientific text review
 
 Invocation: `/claude-council review <file> [<file> ...] [-- focus text] [quick]`
 
 Six reviewers read a thesis chapter, paper, abstract, poster or talk, each through one lens. Comments on facts, numbers and claims are verified by agents who try to refute them; style comments are not. An editor merges everything into comments **in document order**, so the author can work through the file top to bottom.
 
-The text is in **Spanish**. Replacement text (SUGGESTION) is always in Spanish, in the author's register; explanations (ISSUE, EVIDENCE) are in English unless the user asks otherwise.
+The text's language is `{{REVIEW_LANGUAGE}}` and explanations use `{{EXPLAIN_LANGUAGE}}` (both from the settings; the user can override them per run). Replacement text (SUGGESTION) is always in the text's language, in the author's register; explanations (ISSUE, EVIDENCE) and the report are in the explanation language. Substitute both tokens in every prompt below.
 
 All `Agent()` calls use `subagent_type="council-advisor"` (read-only), with the same fallback and `SANDBOX:` rules as the decision workflow. Reviewers never edit the text; the user applies the changes.
 
@@ -38,10 +38,11 @@ python3 -I ~/.claude/skills/claude-council/scripts/integrity_check.py start "$SH
 Write `{{REVIEW_BRIEF}}`:
 
 ```
+RESEARCH CONTEXT: <$RESEARCH_CONTEXT from the settings, or "not set">
 TARGET: <absolute paths, word count>
 DOCUMENT: <thesis chapter | paper | abstract | poster | talk slides> — <title / section>
-AUDIENCE: <e.g. thesis jury (jurado) of physicists, conference poster session, supervisor>
-LANGUAGE: Spanish (suggestions in Spanish; explanations in English)
+AUDIENCE: <e.g. thesis jury, journal referees, conference poster session, supervisor>
+LANGUAGE: {{REVIEW_LANGUAGE}} (suggestions in it; explanations in {{EXPLAIN_LANGUAGE}})
 SOURCES: <absolute paths of notebooks, notes, data, reports the text's numbers and figures come from — from the user, the project notes, or a quick Glob; "none known">
 STYLE RULES: <university/journal/conference template or style guide if found; decimal separator and unit conventions already used in the text>
 FOCUS: <user's focus text, or "none — full review">
@@ -63,8 +64,8 @@ REVIEW RULES:
 - READ-ONLY: never edit any file. Print-only checks (python3 -c, grep, pdftotext <file> -) are fine.
 - Severity: BLOCKER = factually wrong, a number that disagrees with its source, or a claim the jury/referees would reject; MAJOR = unsupported, ambiguous or misleading in a way that changes what the reader believes; MINOR = wording, typos, formatting.
 - Stay in your lens. At most 20 comments, most severe first. A pattern that repeats (same anglicism, same unit formatting slip) is ONE comment listing where it occurs, not one per instance.
-- Suggestions are concrete: give the replacement text in Spanish in the author's own register, or the exact action (add the uncertainty, cite X, move the paragraph). Do not rewrite whole paragraphs unless the paragraph is wrong.
-- Use web search only to check a published value, a reference, or a usage rule (RAE, Fundéu); name the source.
+- Suggestions are concrete: give the replacement text in the text's language, in the author's own register, or the exact action (add the uncertainty, cite X, move the paragraph). Do not rewrite whole paragraphs unless the paragraph is wrong.
+- Use web search only to check a published value, a reference, or a usage rule (a style authority for the text's language, e.g. RAE/Fundéu for Spanish); name the source.
 ```
 
 ### Shared: COMMENT FORMAT
@@ -76,7 +77,7 @@ SEVERITY: BLOCKER | MAJOR | MINOR
 WHERE: /absolute/path:line  (or page N)
 QUOTE: "<exact text>"
 ISSUE: <one sentence>
-SUGGESTION: <replacement text in Spanish, or the action>
+SUGGESTION: <replacement text in the text's language, or the action>
 EVIDENCE: <for facts/numbers: the source file:line/value or reference you checked; "n/a" for style>
 
 === CHECKED AND OK ===
@@ -87,13 +88,13 @@ confidence: high | medium | low
 not_examined: <sections/pages in your lens you did not get to>
 ```
 
-### Hostile referee (jurado escéptico)
+### Hostile referee
 
 ```
 You are the Hostile Referee on a text-review council: the jury member who arrives wanting to find the weak point of this thesis (or the referee who wants to reject the paper). You read as an expert in the field.
 
 What you look for:
-- Overclaiming: "demostramos", "por primera vez", "óptimo", "excelente acuerdo" without the evidence to back the strength of the word
+- Overclaiming: "we demonstrate", "for the first time", "optimal", "excellent agreement" (or their equivalents in the text's language) without the evidence to back the strength of the word
 - Missing context: no comparison with literature or prior work where a jury would expect it; results presented without saying how they compare to the state of the art or to the design target
 - Weak justification: design choices, approximations or parameter values stated without why
 - Logical gaps: conclusions that do not follow from the results shown; results that appear in conclusions but not in the body
@@ -141,15 +142,15 @@ You are the Physics reviewer on a text-review council — a senior physicist che
 
 What you check:
 - Equations: correct, dimensionally consistent, every symbol defined at first use, notation consistent across the text and with the cited sources
-- Concepts: definitions (stopband, finesse, Q factor, quarter-wave, effective index…) stated correctly; mechanisms explained correctly (not only named)
+- Concepts: definitions of the field's key quantities stated correctly; mechanisms explained correctly (not only named)
 - Approximations: stated, and used within their range of validity
-- Terminology: standard Spanish physics terms (or the English term in italics where no standard Spanish one exists), used consistently — one name per concept
+- Terminology: standard physics terms in the text's language (or the English term in italics where no standard one exists), used consistently — one name per concept
 - Physical plausibility of every reported value (orders of magnitude, signs, trends)
 
 {{REVIEW_BRIEF}}
 ```
 
-### Outsider reader (lector externo)
+### Outsider reader
 
 ```
 You are the Outsider Reader on a text-review council: a capable physicist from another field (say, particle physics) reading this text with no background in its subfield and no access to anything but the text. You do not open any other file.
@@ -164,17 +165,22 @@ Report, as comments:
 {{REVIEW_BRIEF}}
 ```
 
-### Language & style (Spanish)
+### Language & style
 
 ```
-You are the Language & Style reviewer on a text-review council: an editor of scientific Spanish. You keep the author's voice and fix what a careful reader or jury would notice.
+You are the Language & Style reviewer on a text-review council: an editor of scientific writing in {{REVIEW_LANGUAGE}}. You keep the author's voice and fix what a careful reader or jury would notice.
 
 What you check:
+- Spelling, grammar and punctuation per the current norms of the language
+- Calques and false friends from other languages (usually English) common in physics writing
+- Register: consistent person and voice, no colloquialisms, sentences over ~40 words split
+- Terminology: one term per concept throughout; foreign terms in italics when kept; acronyms in the form chosen at first use
+- Number and unit typography (coordinate with, do not duplicate, the Numbers checker: only flag style, not values)
+
+If the text is in Spanish, also check:
 - Ortografía and grammar per current RAE norms: tildes (including "solo" and demonstratives without tilde), concordancia, punctuation (no comma between subject and verb), dequeísmo/queísmo, gerundio de posterioridad
 - Anglicisms and calques common in physics writing: "asumir" (for suponer), "eventualmente" (for finalmente), "remover", "chequear", "en orden a", "jugar un rol", "aplicar" (for solicitar), "basado en" overuse, "es por esto que", English word order with adjectives, unnecessary passive "fue medido" (prefer "se midió")
-- Register: consistent person (impersonal "se" or plural "medimos" — whichever the text uses most), no colloquialisms, sentences over ~40 words split
-- Terminology: one term per concept throughout; English terms in italics when kept; acronyms in the form chosen at first use
-- Number and unit typography (coordinate with, do not duplicate, the Numbers checker: only flag style, not values)
+- Register: impersonal "se" or plural "medimos", whichever the text uses most
 Group repeated patterns into one comment with all locations.
 
 {{REVIEW_BRIEF}}
@@ -212,7 +218,7 @@ COMMENTS TO VERIFY:
 ## R6 — Editor (one call)
 
 ```
-You are the editor of a text review of a Spanish scientific document. Below are the brief, the merged comments (with verifier verdicts on fact comments), the reviewers' CHECKED AND OK lists, the referee's LIKELY JURY QUESTIONS and the outsider's ONE-SENTENCE SUMMARY. Write the final report in markdown, exactly these sections:
+You are the editor of a text review of a scientific document in {{REVIEW_LANGUAGE}}. Below are the brief, the merged comments (with verifier verdicts on fact comments), the reviewers' CHECKED AND OK lists, the referee's LIKELY JURY QUESTIONS and the outsider's ONE-SENTENCE SUMMARY. Write the final report in markdown, exactly these sections:
 
 ## Bottom line
 2–3 sentences: is this text ready for its audience? What is the single biggest risk?
@@ -238,7 +244,7 @@ What was checked (numbers traced to sources: n of m; sections read by each lens)
 ## Rejected
 One line per REFUTED comment with the reason.
 
-Do not invent comments. Keep the author's voice in all suggestions. Suggestions in Spanish; explanations in English.
+Do not invent comments. Keep the author's voice in all suggestions. Suggestions in {{REVIEW_LANGUAGE}}; explanations in {{EXPLAIN_LANGUAGE}}.
 
 {{REVIEW_BRIEF}}
 
@@ -253,7 +259,7 @@ Same as the decision workflow's Step 8b, passing the target's directory, each SO
 
 ## R8 — Outputs
 
-Output directory `~/Documents/Tesis/council/`, filenames `review-report-${FILE_TS}-q${SHA}.html` and `review-transcript-${FILE_TS}-q${SHA}.md`. Reuse `assets/report-template.html`; anything not listed → empty string:
+Output directory `$COUNCIL_DIR`, filenames `review-report-${FILE_TS}-q${SHA}.html` and `review-transcript-${FILE_TS}-q${SHA}.md`. Reuse `assets/report-template.html`; anything not listed → empty string:
 
 | Token | Source |
 |---|---|
